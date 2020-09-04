@@ -1,1 +1,1 @@
-console.timeStamp('4 exec');
+performance.mark('4 exec');

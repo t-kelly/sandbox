@@ -1,4 +1,4 @@
-console.timeStamp('1 exec');
+performance.mark('1 exec');
 // 9ef2a31ff4211f6d38b12bc5591629990ba4933813950527e0a3d3cecf04f7dc804612ed182015f3
 // 26acde49d6f1c58af71826b845cd9cab0ae17b08f78843225ff14cd1243f8c4d29928ecb1a0eb749
 // 856b1a9b64a7b97aefd6e084dbc4ed47401e34688a2b93b7484ea7d395b6a41ac03896d3db5cb46e
@@ -37500,13 +37500,13 @@ console.timeStamp('1 exec');
 // 4ce289d415fb6d3c3aee7f5f4576e258acca30b94fdc29c4ca7f200c431459002ac8e0fe7b083261
 // 86d8175921e006cc878b7f4f116fba49ad239e4d0637eead539fe49569af1e7393fe27a55f8915bb
 function wait1(){
-    console.timeStamp('later 1');
+    performance.mark('later 1');
 }
 setTimeout(wait1, 0);
 !function wait1b(){
-    console.timeStamp('later 1b');
+    performance.mark('later 1b');
 }();
 
 (async function wait1c(){
-    console.timeStamp('later 1c');
+    performance.mark('later 1c');
 })();

@@ -7,7 +7,7 @@
     <!-- (A) SCRIPT READY FUNCTION -->
     <script>
         function ready (whichone) {
-            console.timeStamp(`onload ${whichone.src}`);
+            performance.mark(`onload ${whichone.src}`);
         }
     </script>
     <link href="https://stevesouders.com/bin/resource.cgi?type=css&sleep=2&t=1512427244" rel="stylesheet">
@@ -23,18 +23,18 @@
             script.setAttribute("async", "");
             script.src = src;
             script.onload = function () {
-                console.timeStamp(this.src);
+                performance.mark(this.src);
             };
-            console.timeStamp(`inject: ${script.src}`);
+            performance.mark(`inject: ${script.src}`);
             document.head.appendChild(script);
         }('3.js');
-        console.timeStamp('inline js done');
+        performance.mark('inline js done');
     </script>
     <script src="https://stevesouders.com/bin/resource.cgi?type=js&sleep=2&t=1512427244" onload="ready(this)"></script>
     <script async src="https://stevesouders.com/bin/resource.cgi?type=js&sleep=2&t=1512427245" onload="ready(this)"></script>
 
     <script>
-        console.timeStamp ('head done');
+        performance.mark ('head done');
     </script>
 
 </head>
