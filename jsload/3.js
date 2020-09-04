@@ -1,4 +1,4 @@
-console.log('3 exec');
+console.timeStamp('3 exec');
 // 3b7671257ddc130dd7a02fc52cc46f65aa4b9502a35b0c83f07b45364505405e75f04a3dfe1bdb28
 // bd2cdefe2eee8d84de3e2402ba168941531aabeb5b3c781b64eff8ca867cece361d580b942494dfd
 // 8e577f14e0228ff2aa3713a4677beac3427375de5b5d2b2cecfafe21a2ce3c7fca4361c2c504116d
@@ -37500,9 +37500,9 @@ console.log('3 exec');
 // c4423d0585c98920c30733b20ad0c40af1b366919105bad6c990c9cd10a6b9e33cafd1c1eff000cc
 // 9728d17b1f2734e00cf85b7fae1be4b17af97eab6fb5bb1f6715248f20d3fac1635252c411845732
 function wait3(){
-    console.log('later 3');
+    console.timeStamp('later 3');
 }
 setTimeout(wait3, 0);
 !function wait3b(){
-    console.log('later 3b');
+    console.timeStamp('later 3b');
 }();

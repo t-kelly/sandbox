@@ -1,1 +1,1 @@
-console.log('4 exec');
+console.timeStamp('4 exec');
