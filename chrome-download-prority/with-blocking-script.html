@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Chrome Preloader Delay Demo</title>
+
+    <!-- PRIORITY LOW - Deffered Local Script -->
+    <script defer src="1.js"></script>
+
+    <!-- PRIORITY LOW - Async Local Script -->
+    <script async src="2.js"></script>
+
+    <!-- PRIORITY HIGH - Render block synchronus 3rd party script -->
+    <script src="https://stevesouders.com/bin/resource.cgi?type=js&sleep=2&t=1512427244"></script>
+
+    <!-- PRIORITY Low - Async 3rd party script -->
+    <script defer src="https://stevesouders.com/bin/resource.cgi?type=js&sleep=2&t=1512427245"></script>
+    <script defer src="https://stevesouders.com/bin/resource.cgi?type=js&sleep=2&t=1512427246"></script>
+    
+    <!-- PRIORITY Low - Async 3rd party script -->
+    <script async src="https://stevesouders.com/bin/resource.cgi?type=js&sleep=2&t=1512427247"></script>
+</head>
+<body>
+    <h1>RequestStart Delay with Chrome Preloader</h1>
+    <h2>With Blocking Script in Head</h2>
+
+    <p id="scriptCount">Scripts that didn't wait for high priority assets: </p>
+    <p id="loadTime">Page Load Event: </p>
+
+    <!-- PRIORITY HIGH - Non-render blocking, synchronus 3rd party script -->
+    <script src="https://stevesouders.com/bin/resource.cgi?type=js&sleep=2&t=1512427249"></script>
+
+    <script>
+        const SOUNDERS_SLEEP_TIME = 2000;
+        window.addEventListener('load', () => {
+            const resourcePerformanceEntries = performance.getEntriesByType('resource');
+            console.log(resourcePerformanceEntries);
+            const fastEntries = resourcePerformanceEntries.filter((entry) => {
+                const {requestStart, fetchStart} = entry;
+                return (requestStart - fetchStart) < SOUNDERS_SLEEP_TIME;
+            })
+
+            document.getElementById('scriptCount').append(`${fastEntries.length}/${resourcePerformanceEntries.length}`);
+            document.getElementById('loadTime').append(`${window.performance.timing.loadEventStart - window.performance.timing.navigationStart}ms`);
+
+            console.log(`Fast Entries: ${fastEntries.length}/${resourcePerformanceEntries.length}`)
+        });
+    </script>
+</body>
+</html>
