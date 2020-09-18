@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Chrome RequestStart Delay</title>
+
+
+    <script src="/resources/testharness.js"></script>
+    <script src="/resources/testharnessreport.js"></script>
+
+    <!-- PRIORITY LOW - Async 3rd party script -->
+    <script defer src="https://stevesouders.com/bin/resource.cgi?type=js&sleep=2&t=1512427243&expires=-1"></script>
+
+    <!-- PRIORITY HIGH - Render block synchronus 3rd party script -->
+    <script src="https://stevesouders.com/bin/resource.cgi?type=js&sleep=2&t=1512427244&expires=-1"></script>
+
+    <!-- PRIORITY LOW - Async 3rd party script -->
+    <script defer src="https://stevesouders.com/bin/resource.cgi?type=js&sleep=2&t=1512427245&expires=-1"></script>
+    
+    <!-- PRIORITY LOW - Async 3rd party script -->
+    <script async src="https://stevesouders.com/bin/resource.cgi?type=js&sleep=2&t=1512427246&expires=-1"></script>
+</head>
+<body>
+    <h1>Chrome RequestStart Delay</h1>
+
+    <p>As of Chrome Version 85.0.4183.102, some Low or Medium priority scripts have a requestStart that is unnecessarily delayed by High priority scripts. This behaviour is different from Safari (Version 13.1.2 ) and Firefox (Version 80.0.1)</p>
+
+    <h3>Chrome</h3>
+    <p>Some low priority scripts wait until high priority scripts finish</p>
+    <img src="chrome.png" width=500>
+
+    <h3>Safari</h3>
+    <p>All requests start immediately</p>
+    <img src="safari.png" width=500>
+
+    <h3>Firefox</h3>
+    <p>All requests start immediately</p>
+    <img src="firefox.png" width=500>
+
+    <div id="results"></div>
+
+    <!-- PRIORITY HIGH - Non-render blocking, synchronus 3rd party script -->
+    <script src="https://stevesouders.com/bin/resource.cgi?type=js&sleep=2&t=1512427247&expires=-1"></script>
+
+    <script>
+        
+        const SLEEP_TIME = 2000;
+
+        function getSoudersEntries() {
+            const resourcePerformanceEntries = performance.getEntriesByType('resource');
+            return resourcePerformanceEntries.filter((entry) => {
+                return entry.name.includes('https://stevesouders.com/bin/resource.cgi');
+            })
+        }
+
+        window.addEventListener('load', () => {
+            test(() => {
+                const soudersEntries = getSoudersEntries();
+                const highPriorityEntry = soudersEntries.find(entry => entry.name.includes('t=1512427244'));
+                const lateEntries = soudersEntries.filter((entry) => {
+                    const {requestStart, fetchStart} = entry;
+                    return requestStart > highPriorityEntry.responseEnd;
+                })
+
+                console.log('Late Requests: ', lateEntries)
+
+                assert_true(lateEntries.length === 0);                    
+            }, 'Low or Medium priority scripts have a requestStart that happens after the first high priority request responseEnd');
+        });
+    </script>
+</body>
+</html>
