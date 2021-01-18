@@ -6,48 +6,53 @@
 // --------- START PREPENDED CONTENT ----------
 // Wrap everything in a IIFE so that the original self.addEventListener is only accessible to us
 (function () {
-  const addEventListener = self.addEventListener;
+  // Use strict mode to enforce non-writable properties
+  'use strict';
 
-  self.addEventListener = function(event, cb, options) {
+  // TODO -- Expand this list to cover all routes we want to make available and are needed for core PWA 
+  const ROUTE_WHITELIST_REGEX = [
+    '/^https?\:\/\/[^\/]+\/?$/', // Is root URL
+    '/^https?\:\/\/[^\/]+\/products/',
+    '/^https?\:\/\/[^\/]+\/collections/',
+    '/^https?\:\/\/[^\/]+\/pages/',
+    '/^https?\:\/\/[^\/]+\/cart/',
+    '/^https?\:\/\/[^\/]+\/search/'
+  ];
 
-    // Our list of blacklisted request routes we don't want accesible via the 'fetch' event listener
-    const ROUTE_BLACKLIST_REGEX = [
-      '^\/admin',
-      '^\/[[0-9]+\/.*?checkout',
-    ];
+  const originalAddEventListener = EventTarget.prototype.addEventListener;
 
-    // Every 'fetch' event handler that is registered with addEventListener first needs 
-    // to pass through this method
-    function fetchCallbackWithBlacklist(event) {
-      const {pathname} = new URL(event.request.url);
-
-      if (isBlacklisted(pathname)) {
-        return console.log(`Shopify: Cannot execute service worker fetch event listener on following request: ${pathname}`)
-      }
-
-      // Only if the route is not blacklisted do we call the event handler
-      return cb.call(this, event);
+  function whitelistedFetchCallback(event) {
+    if (!isWhitelisted(event.request.url)) {
+      return console.log(`BLOCKED: Cannot execute service worker fetch event handler on following request: ${event.request.url}`)
     }
 
-    function isBlacklisted(pathname) {
-      return ROUTE_BLACKLIST_REGEX.some((regex) => pathname.match(regex));
-    }
+    // Only call original event handler if the route is whitelisted
+    return cb.call(this, event);
+  }
 
-    // If the event listener is not for fetch events, it's safe so do nothing
-    if (event !== 'fetch') return addEventListener.call(self, event, cb, options);
-    
-    // Otherwise use our safe event handler than blocks blacklisted routes
-    return addEventListener.call(self, event, fetchCallbackWithBlacklist, options); 
+  function isWhitelisted(url) {
+    return ROUTE_WHITELIST_REGEX.some((regex) => url.match(regex));
+  }
+
+  function safeAddEventListener(event, cb, options) {
+    if (event !== 'fetch') return originalAddEventListener.call(self, event, cb, options);
+    return originalAddEventListener.call(self, event, whitelistedFetchCallback, options); 
   };
 
+  Object.defineProperty(EventTarget.prototype, 'addEventListener', {value: safeAddEventListener, enumerable: false, writable: false});
+  Object.defineProperty(self, 'onfetch', {value: null, enumerable: false, writable: false});
+  
 }());
 // -------- END PREPENDED CONTENT ---------
 
 // -------- START ORIGINAL SW.JS CONTENT PROVIDED BY APP --------
-
-// Test Fetch Event Listener to see what request could be intercepted by app proxy service workers
+// Test addEventListener
 self.addEventListener('fetch', event => {
-    console.log('Fetch event listener fired for:' , event.request.url);
+    console.log('PASS: Fetch event listener fired for:' , event.request.url);
 });
 
+// Test onfetch property of Service
+self.onfetch = (event) => {
+  console.log('PASS: Fetch event listener fired for:' , event.request.url);
+}
 // -------- END ORIGINAL SW.JS CONTENT PROVIDED BY APP --------
