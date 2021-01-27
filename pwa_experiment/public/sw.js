@@ -5,43 +5,45 @@
 
 // --------- START PREPENDED CONTENT ----------
 // Wrap everything in a IIFE so that the original self.addEventListener is only accessible to us
+'use strict';
 (function () {
-  // Use strict mode to enforce non-writable properties
-  'use strict';
+  const {hostname, pathname} = self.location
+  const proxy = pathname.match(/\/(apps|a|community|tools)\/[^\/]+/)[0] 
 
-  // TODO -- Expand this list to cover all routes we want to make available and are needed for core PWA 
   const ROUTE_WHITELIST_REGEX = [
-    '/^https?\:\/\/[^\/]+\/?$/', // Is root URL
-    '/^https?\:\/\/[^\/]+\/products/',
-    '/^https?\:\/\/[^\/]+\/collections/',
-    '/^https?\:\/\/[^\/]+\/pages/',
-    '/^https?\:\/\/[^\/]+\/cart/',
-    '/^https?\:\/\/[^\/]+\/search/'
+    // Allow only specific subroutes within a storefront
+    `^https\:\/\/${hostname}+\/($|collections|products|pages|cart|search|blogs|account|recommendations)`,
+    // Allow requests from the app proxy in which the service worker was served
+    `^https\:\/\/${hostname}+${proxy}`,
+    // Allow all 3rd party urls
+    `^https?\:\/\/(?!${hostname}).+`,
   ];
 
   const originalAddEventListener = EventTarget.prototype.addEventListener;
 
-  function whitelistedFetchCallback(event) {
-    if (!isWhitelisted(event.request.url)) {
-      return console.log(`BLOCKED: Cannot execute service worker fetch event handler on following request: ${event.request.url}`)
+  function safeAddEventListener(event, cb, options) {
+    function whitelistedFetchCallback(event) {
+      if (!isWhitelisted(event.request.url)) {
+        return console.log(`BLOCKED: Cannot execute service worker fetch event handler on following request: ${event.request.url}`)
+      }
+  
+      return cb.call(this, event);
     }
 
-    // Only call original event handler if the route is whitelisted
-    return cb.call(this, event);
-  }
+    function isWhitelisted(url) {
+      return ROUTE_WHITELIST_REGEX.some((str) => {
+        const re = new RegExp(str);
+        return url.match(re)
+      })
+    }
 
-  function isWhitelisted(url) {
-    return ROUTE_WHITELIST_REGEX.some((regex) => url.match(regex));
-  }
-
-  function safeAddEventListener(event, cb, options) {
     if (event !== 'fetch') return originalAddEventListener.call(self, event, cb, options);
+
     return originalAddEventListener.call(self, event, whitelistedFetchCallback, options); 
   };
 
   Object.defineProperty(EventTarget.prototype, 'addEventListener', {value: safeAddEventListener, enumerable: false, writable: false});
   Object.defineProperty(self, 'onfetch', {value: null, enumerable: false, writable: false});
-  
 }());
 // -------- END PREPENDED CONTENT ---------
 
@@ -52,7 +54,7 @@ self.addEventListener('fetch', event => {
 });
 
 // Test onfetch property of Service
-self.onfetch = (event) => {
-  console.log('PASS: Fetch event listener fired for:' , event.request.url);
-}
+// self.onfetch = (event) => {
+//   console.log('PASS: Fetch event listener fired for:' , event.request.url);
+// }
 // -------- END ORIGINAL SW.JS CONTENT PROVIDED BY APP --------
