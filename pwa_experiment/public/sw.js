@@ -5,56 +5,99 @@
 
 // --------- START PREPENDED CONTENT ----------
 // Wrap everything in a IIFE so that the original self.addEventListener is only accessible to us
-'use strict';
+// 'use strict';
 (function () {
-  const {hostname, pathname} = self.location
-  const proxy = pathname.match(/\/(apps|a|community|tools)\/[^\/]+/)[0] 
+  const originalAddEventListener = EventTarget.prototype.addEventListener;
+  const originalRemoveEventListener = EventTarget.prototype.removeEventListener;
 
-  const ROUTE_WHITELIST_REGEX = [
+  const {hostname, pathname} = self.location
+  const safeFetchHandlers = new WeakMap();
+  let currentOnFetch = null;
+ 
+  const matches = /^\/(apps|a|community|tools)\/[^\/]+/.exec(pathname);
+  const proxy = matches && matches[0];
+  const hostnameRegex = hostname.replace(/\./g, '\\.');
+  const ALLOWLIST = [
     // Allow only specific subroutes within a storefront
-    `^https\:\/\/${hostname}+\/($|collections|products|pages|cart|search|blogs|account|recommendations)`,
+    `^https\:\/\/${hostnameRegex}+\/($|collections|products|pages|cart|search|blogs|account|recommendations)`,
     // Allow requests from the app proxy in which the service worker was served
-    `^https\:\/\/${hostname}+${proxy}`,
+    `^https\:\/\/${hostnameRegex}+${proxy}`,
     // Allow all 3rd party urls
-    `^https?\:\/\/(?!${hostname}).+`,
+    `^https?\:\/\/(?!${hostnameRegex}).+`,
   ];
 
-  const originalAddEventListener = EventTarget.prototype.addEventListener;
+  function isAllowlisted(url) {
+    return ALLOWLIST.some((str) => {
+      const re = new RegExp(str);
+      return url.match(re)
+    })
+  }
 
-  function safeAddEventListener(event, cb, options) {
-    function whitelistedFetchCallback(event) {
-      if (!isWhitelisted(event.request.url)) {
-        return console.log(`BLOCKED: Cannot execute service worker fetch event handler on following request: ${event.request.url}`)
+  function safeAddEventListener(event, handler, options) {
+    if (event !== 'fetch') return originalAddEventListener.call(this, event, handler, options);
+    function safeHandler(event) {
+      if (!isAllowlisted(event.request.url)) {
+        return console.debug(`FETCH EVENT BLOCKED: Cannot execute fetch event handler on following request: ${event.request.url}`)
       }
-  
-      return cb.call(this, event);
+      return handler.call(this, event);
     }
-
-    function isWhitelisted(url) {
-      return ROUTE_WHITELIST_REGEX.some((str) => {
-        const re = new RegExp(str);
-        return url.match(re)
-      })
-    }
-
-    if (event !== 'fetch') return originalAddEventListener.call(self, event, cb, options);
-
-    return originalAddEventListener.call(self, event, whitelistedFetchCallback, options); 
+    safeFetchHandlers.set(handler, safeHandler);
+    originalAddEventListener.call(this, event, safeHandler, options); 
   };
 
-  Object.defineProperty(EventTarget.prototype, 'addEventListener', {value: safeAddEventListener, enumerable: false, writable: false});
-  Object.defineProperty(self, 'onfetch', {value: null, enumerable: false, writable: false});
-}());
+  function safeRemoveEventListener(event, handler) {
+    if (!safeFetchHandlers.has(handler)) return;
+    const safeHandler = safeFetchHandlers.get(handler)
+    safeFetchHandlers.delete(handler);
+    originalRemoveEventListener.call(this, event, safeHandler);
+  }
+
+  Object.defineProperty(EventTarget.prototype, 'addEventListener', {
+    ...Object.getOwnPropertyDescriptor(EventTarget.prototype, 'addEventListener'),
+    value: safeAddEventListener
+  });
+
+  Object.defineProperty(EventTarget.prototype, 'removeEventListener', {
+    ...Object.getOwnPropertyDescriptor(EventTarget.prototype, 'removeEventListener'),
+    value: safeRemoveEventListener
+  });
+  
+  Object.defineProperty(self, 'onfetch', {
+    ...Object.getOwnPropertyDescriptor(self, 'onfetch'),
+    get() { return currentOnFetch; },
+    set(newOnFetch) {
+      if (currentOnFetch !== null) {
+        safeRemoveEventListener.call(self, 'fetch', currentOnFetch);
+      }
+      if (typeof newOnFetch === 'function') {
+        safeAddEventListener.call(self, 'fetch', newOnFetch);
+      }
+      currentOnFetch = newOnFetch;
+    },
+  });
+}()); 
 // -------- END PREPENDED CONTENT ---------
 
 // -------- START ORIGINAL SW.JS CONTENT PROVIDED BY APP --------
 // Test addEventListener
 self.addEventListener('fetch', event => {
-    console.log('PASS: Fetch event listener fired for:' , event.request.url);
+    console.debug('PASS: Fetch event listener fired for:' , event.request.url);
 });
 
-// Test onfetch property of Service
-// self.onfetch = (event) => {
-//   console.log('PASS: Fetch event listener fired for:' , event.request.url);
-// }
+// Test onfetch property of SW. Make sure previous onFetch handler is removed
+self.onfetch = (event) => {
+  console.debug('ONFETCH 1: Fetch event listener fired for:' , event.request.url);
+}
+self.onfetch = (event) => {
+  console.debug('ONFETCH 2: Fetch event listener fired for:' , event.request.url);
+}
+
+// Test add and remove event handler
+function testEventHandler (event) {
+  console.debug('REMOVE FAILED: Fetch event listener fired for:' , event.request.url);
+}
+self.addEventListener('fetch', testEventHandler);
+self.removeEventListener('fetch', testEventHandler);
 // -------- END ORIGINAL SW.JS CONTENT PROVIDED BY APP --------
+
+importScripts(`https://weinfuerst.app.baqend.com/v1/speedkit/sw.js?r=487a886b-861f-4cbd-9c43-2268fffeedc7&v=2.6.2&gr=A`);

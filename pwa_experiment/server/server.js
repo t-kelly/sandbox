@@ -9,6 +9,7 @@ import Koa from "koa";
 import next from "next";
 import Router from "koa-router";
 import session from "koa-session";
+import compress from "koa-compress"
 import send from "koa-send";
 
 dotenv.config();
@@ -58,10 +59,21 @@ app.prepare().then(() => {
     ctx.res.statusCode = 200;
   });
 
+  server.use(compress({
+    gzip: {
+      flush: require('zlib').constants.Z_SYNC_FLUSH
+    },
+    deflate: {
+      flush: require('zlib').constants.Z_SYNC_FLUSH,
+    },
+    br: false // disable brotli
+  }))
+
   server.use(async (ctx) => {
     console.log(ctx.path);
     if ('/sw.js' == ctx.path) {
       console.log('service worker requested');
+      console.log(ctx.headers);
       ctx.set('Service-Worker-Allowed', '/');
       return send(ctx, path.join('./public',ctx.path));
     }
@@ -71,6 +83,7 @@ app.prepare().then(() => {
       return send(ctx, path.join('./public',ctx.path));
     }
   })
+
   server.use(router.allowedMethods());
   server.use(router.routes());
   server.listen(port, () => {
