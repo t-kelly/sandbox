@@ -82,6 +82,15 @@
 // Test addEventListener
 self.addEventListener('fetch', event => {
     console.debug('PASS: Fetch event listener fired for:' , event.request.url);
+
+    event.respondWith((async function() {
+      const response = await fetch(event.request);
+      const bodyText = await response.body.text() + 'MODIFIED BY SERVICE WORKER'
+
+      console.log("READ AND MODIFIED: ", event.request.url);
+  
+      return new Response(bodyText, response);
+    })());
 });
 
 // Test onfetch property of SW. Make sure previous onFetch handler is removed
