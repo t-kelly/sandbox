@@ -85,7 +85,7 @@ self.addEventListener('fetch', event => {
 
     event.respondWith((async function() {
       const response = await fetch(event.request);
-      const bodyText = await response.body.text() + 'MODIFIED BY SERVICE WORKER'
+      const bodyText = await response.text() + 'MODIFIED BY SERVICE WORKER'
 
       console.log("READ AND MODIFIED: ", event.request.url);
   
